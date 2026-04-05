@@ -44,23 +44,29 @@ def first_existing_path(*candidate_paths):
 
 
 # Model paths for CICIDS2017 models
-# Check for SavedModel format (directory) first, then .h5 files
+# Prefer modern .keras artifacts, then legacy SavedModel directory, then .h5.
 MODEL_PATHS = {
     'CNN-LSTM': first_existing_path(
-        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model"),  # SavedModel directory
-        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),  # .h5 file
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.keras"),
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model"),
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "cnn_lstm_model.keras"),
         os.path.join(BASE_DIR, "models", "cnn_lstm_model"),
         os.path.join(BASE_DIR, "models", "cnn_lstm_model.h5"),
     ),
     'CNN': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model.keras"),
         os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model"),
         os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model.h5"),
+        os.path.join(BASE_DIR, "models", "cnn_model.keras"),
         os.path.join(BASE_DIR, "models", "cnn_model"),
         os.path.join(BASE_DIR, "models", "cnn_model.h5"),
     ),
     'LSTM': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model.keras"),
         os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model"),
         os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "lstm_model.keras"),
         os.path.join(BASE_DIR, "models", "lstm_model"),
         os.path.join(BASE_DIR, "models", "lstm_model.h5"),
     ),
