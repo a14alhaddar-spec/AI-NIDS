@@ -4234,5 +4234,5 @@ if __name__ == "__main__":
     print(f"Dashboard URL: http://localhost:8080")
     print("Displays metrics from shared_metrics.json")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
 
