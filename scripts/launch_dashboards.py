@@ -11,6 +11,11 @@ from pathlib import Path
 
 def resolve_python_executable(repo_root):
     """Prefer the project's virtual environment Python, fall back to current Python."""
+    if os.name != "nt":
+        # Under Linux/systemd, ExecStart already points at the intended interpreter.
+        # Reuse it directly so child services run in the same environment.
+        return sys.executable
+
     if os.name == "nt":
         candidate = repo_root / ".venv" / "Scripts" / "python.exe"
     else:
