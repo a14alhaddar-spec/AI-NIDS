@@ -61,7 +61,8 @@ def start_service(name, script_path, python_exe, wait_time=2):
 
 def stop_services(processes):
     """Gracefully stop launched child processes."""
-    for proc in processes:
+    for item in processes:
+        proc = item[1] if isinstance(item, tuple) else item
         if proc.poll() is None:
             try:
                 if os.name == "nt":
@@ -71,7 +72,8 @@ def stop_services(processes):
             except Exception:
                 pass
 
-    for proc in processes:
+    for item in processes:
+        proc = item[1] if isinstance(item, tuple) else item
         try:
             proc.wait(timeout=5)
         except Exception:
@@ -130,12 +132,18 @@ def main():
     print("=" * 70)
     
     try:
+        reported_exits = set()
         while True:
             dashboard_failed = False
             for name, proc in launched_processes:
                 return_code = proc.poll()
                 if return_code is None:
                     continue
+
+                exit_key = (name, return_code)
+                if exit_key in reported_exits:
+                    continue
+                reported_exits.add(exit_key)
 
                 if name == "Unified Dashboard (Port 8080)":
                     print(f"\n[ERROR] {name} exited with code {return_code}. Stopping launcher.")
