@@ -36,16 +36,41 @@ from shared_metrics import add_prediction
 PRIMARY_MODEL = "CNN-LSTM"
 METRICS_MODE = os.getenv("NIDS_METRICS_MODE", "offline").strip().lower() or "offline"
 
+def first_existing_path(*candidate_paths):
+    for candidate_path in candidate_paths:
+        if candidate_path and os.path.exists(candidate_path):
+            return candidate_path
+    return None
+
+
 # Model paths for CICIDS2017 models
 MODEL_PATHS = {
-    'CNN-LSTM': os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),
-    'CNN': os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model.h5"),
-    'LSTM': os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model.h5"),
-    'Random Forest': os.path.join(BASE_DIR, "models", "cicids_full", "rf_model.joblib"),
+    'CNN-LSTM': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "cnn_lstm_model.h5"),
+    ),
+    'CNN': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model.h5"),
+        os.path.join(BASE_DIR, "models", "cnn_model.h5"),
+    ),
+    'LSTM': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "lstm_model.h5"),
+    ),
+    'Random Forest': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "rf_model.joblib"),
+        os.path.join(BASE_DIR, "models", "model.joblib"),
+    ),
 }
 
-SCALER_PATH = os.path.join(BASE_DIR, "models", "cicids_full", "scaler.joblib")
-ENCODER_PATH = os.path.join(BASE_DIR, "models", "cicids_full", "label_encoder.joblib")
+SCALER_PATH = first_existing_path(
+    os.path.join(BASE_DIR, "models", "cicids_full", "scaler.joblib"),
+    os.path.join(BASE_DIR, "models", "scaler.joblib"),
+)
+ENCODER_PATH = first_existing_path(
+    os.path.join(BASE_DIR, "models", "cicids_full", "label_encoder.joblib"),
+    os.path.join(BASE_DIR, "models", "label_encoder.joblib"),
+)
 
 # Loaded models
 MODELS = {}
@@ -91,46 +116,57 @@ MODEL_LOCKS = {
 }
 
 def load_models():
-    """Load all models and preprocessing artifacts"""
+    """Load all models and preprocessing artifacts."""
     global MODELS, SCALER, ENCODER
-    
+
     print("\n" + "=" * 60)
     print("LOADING MODELS")
     print("=" * 60)
-    
-    # Load scaler and encoder (common for all models)
-    try:
-        SCALER = joblib.load(SCALER_PATH)
-        print(f"[OK] Scaler loaded: {SCALER_PATH}")
-    except Exception as e:
-        print(f"[ERROR] Error loading scaler: {e}")
-        return False
-    
-    try:
-        ENCODER = joblib.load(ENCODER_PATH)
-        print(f"[OK] Label encoder loaded: {ENCODER_PATH}")
-        print(f"  Classes: {list(ENCODER.classes_)}")
-    except Exception as e:
-        print(f"[ERROR] Error loading encoder: {e}")
-        return False
-    
-    # Load each model
+
+    # Load scaler and encoder when available; keep going if they are missing.
+    if SCALER_PATH:
+        try:
+            SCALER = joblib.load(SCALER_PATH)
+            print(f"[OK] Scaler loaded: {SCALER_PATH}")
+        except Exception as exc:
+            print(f"[WARN] Error loading scaler: {exc}")
+            SCALER = None
+    else:
+        print("[WARN] No scaler file found. Heuristic mode will be used when needed.")
+
+    if ENCODER_PATH:
+        try:
+            ENCODER = joblib.load(ENCODER_PATH)
+            print(f"[OK] Label encoder loaded: {ENCODER_PATH}")
+            print(f"  Classes: {list(ENCODER.classes_)}")
+        except Exception as exc:
+            print(f"[WARN] Error loading encoder: {exc}")
+            ENCODER = None
+    else:
+        print("[WARN] No label encoder file found. Heuristic mode will be used when needed.")
+
+    # Load each model when present.
     for model_name, model_path in MODEL_PATHS.items():
         try:
+            if not model_path:
+                raise FileNotFoundError(f"No artifact found for {model_name}")
+
             if model_path.endswith('.joblib'):
-                # Random Forest
                 MODELS[model_name] = joblib.load(model_path)
             else:
-                # Deep learning models (TensorFlow/Keras)
                 import tensorflow as tf
                 MODELS[model_name] = tf.keras.models.load_model(model_path)
+
             print(f"[OK] {model_name} loaded: {model_path}")
             reset_model_metrics(model_name)
             print(f"[OK] Reset metrics for {model_name}")
-        except Exception as e:
-            print(f"[ERROR] Error loading {model_name}: {e}")
+        except Exception as exc:
+            print(f"[WARN] {model_name} unavailable: {exc}")
             MODELS[model_name] = None
-    
+
+    if not any(model is not None for model in MODELS.values()):
+        print("[WARN] No trained models are available. Heuristic predictions will be used.")
+
     print("=" * 60)
     return True
 
@@ -142,37 +178,34 @@ def predict_with_model(model_name, features):
     Returns: (prediction_label, confidence)
     """
     global MODELS, SCALER, ENCODER
-    
+
     model = MODELS.get(model_name)
-    if model is None:
-        return "ERROR", 0.0
-    
+    if model is None or SCALER is None or ENCODER is None:
+        return heuristic_score(features)
+
     try:
         # Prepare feature vector in exact order expected by scaler
         feature_vector = np.array([[features.get(fn, 0.0) for fn in FEATURE_NAMES]])
-        
+
         # Scale the features
         feature_scaled = SCALER.transform(feature_vector)
-        
+
         # Get prediction based on model type
         if model_name == 'Random Forest':
-            # Random Forest
             proba = model.predict_proba(feature_scaled)[0]
             idx = int(proba.argmax())
             confidence = float(proba[idx])
             label = ENCODER.classes_[idx]
         else:
-            # Deep learning models (CNN, LSTM, CNN-LSTM)
             proba = model.predict(feature_scaled, verbose=0)[0]
             idx = int(proba.argmax())
             confidence = float(proba[idx])
             label = ENCODER.classes_[idx]
-        
+
         return label, confidence
-        
-    except Exception as e:
-        print(f"  Prediction error for {model_name}: {e}")
-        return "ERROR", 0.0
+    except Exception as exc:
+        print(f"  Prediction error for {model_name}: {exc}")
+        return heuristic_score(features)
 
 def reset_model_metrics(model_name):
     """Reset metrics for specific model"""
@@ -372,37 +405,36 @@ def load_attack_samples(attack_type, count=None):
     return all_samples.head(sample_count)
 
 def test_sample(features, label):
-    """Test sample with all loaded models"""
+    """Test sample with all loaded models."""
     print(f"\n{'='*60}")
     print(f"Testing sample - Actual: {label}")
     print(f"{'='*60}")
-    
+
     # Prepare features in the exact order expected by the scaler
     feature_dict = {}
     for target_key, source_key in FEATURE_MAP.items():
         feature_dict[source_key] = to_number(features.get(source_key, 0))
-    
+
     print("Features:", {k: round(v, 2) for k, v in feature_dict.items()})
-    
+
     # Test each model
     for model_name in ['CNN-LSTM', 'Random Forest', 'CNN', 'LSTM']:
         if model_name not in MODELS or MODELS[model_name] is None:
-            print(f"  {model_name:15} NOT LOADED")
-            continue
-            
+            print(f"  {model_name:15} NOT LOADED - using heuristics")
+
         pred, conf = predict_with_model(model_name, feature_dict)
-        
+
         # Determine if threat
         is_threat = pred.lower() not in ['benign', 'error', 'unknown']
         icon = "DETECTED" if is_threat else "BENIGN"
-        
+
         # Highlight primary model
         if model_name == PRIMARY_MODEL:
             print(f"  >>> {model_name:15} {icon:10} {pred:15} {conf*100:5.1f}% <<<")
         else:
             print(f"  {model_name:15} {icon:10} {pred:15} {conf*100:5.1f}%")
-        
-# Update model-specific metrics (primary)
+
+        # Update model-specific metrics (primary)
         add_model_prediction(model_name, pred, conf, is_threat)
         # Keep shared metrics for dashboard (backward compat)
         add_prediction(pred, conf, is_threat, model_name, {"mode": METRICS_MODE})
@@ -491,61 +523,49 @@ Examples:
   python run_test.py --benign             # Test benign only
   python run_test.py --list               # List attack types
   python run_test.py --attack DDoS --samples 10  # Custom sample count
-        """
+        """,
     )
-    
+
     parser.add_argument(
         "--attack", "-a",
         action="append",
         dest="attacks",
-        help="Attack type to test (can be specified multiple times)"
+        help="Attack type to test (can be specified multiple times)",
     )
     parser.add_argument(
         "--all-attacks",
         action="store_true",
-        help="Test all attack types"
+        help="Test all attack types",
     )
     parser.add_argument(
         "--benign", "-b",
         action="store_true",
-        help="Test BENIGN traffic only"
+        help="Test BENIGN traffic only",
     )
     parser.add_argument(
         "--list", "-l",
         action="store_true",
-        help="List all available attack types and exit"
+        help="List all available attack types and exit",
     )
     parser.add_argument(
         "--samples", "-s",
         type=int,
         default=None,
-        help="Number of samples to test per attack type"
+        help="Number of samples to test per attack type",
     )
-    
+
     args = parser.parse_args()
-    
-    # List mode
+
     if args.list:
         list_attack_types()
         return
-    
-    # Check if any testing option is selected
-    has_test_option = args.attacks or args.all_attacks or args.benign
-    
-    if not has_test_option:
-        # Load models first, then show interactive menu
-        if not load_models():
-            print("Failed to load models. Exiting.")
-            sys.exit(1)
+
+    load_models()
+
+    if not (args.attacks or args.all_attacks or args.benign):
         interactive_menu()
         return
-    
-    # Load models before testing
-    if not load_models():
-        print("Failed to load models. Exiting.")
-        sys.exit(1)
-    
-    # Test specific attacks
+
     if args.attacks:
         for attack in args.attacks:
             if attack in ATTACK_MAPPING:
@@ -553,20 +573,19 @@ Examples:
             else:
                 print(f"Unknown attack type: {attack}")
                 print("Use --list to see available attack types")
-    
-    # Test all attacks
+
     if args.all_attacks:
         print("\n*** Testing ALL attack types ***")
         for attack_type in ATTACK_MAPPING.keys():
             test_attack_type(attack_type, args.samples)
-    
-    # Test benign only
+
     if args.benign:
         test_attack_type("BENIGN", args.samples)
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("TESTING COMPLETE!")
-    print("="*60)
+    print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

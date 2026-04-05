@@ -29,7 +29,11 @@ if [[ -f "${REPO_ROOT}/services/dashboard_api/requirements.txt" ]]; then
   pip install -r "${REPO_ROOT}/services/dashboard_api/requirements.txt"
 fi
 # Additional runtime libraries used by launched services.
-pip install tensorflow scikit-learn pandas
+pip install tensorflow scikit-learn pandas scapy
+
+
+echo "[2b/5] Granting packet-capture capability to the virtualenv Python..."
+sudo setcap cap_net_raw,cap_net_admin=eip "${REPO_ROOT}/.venv/bin/python" || true
 
 
 echo "[3/5] Creating systemd service..."
