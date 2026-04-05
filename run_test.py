@@ -171,6 +171,67 @@ def load_models():
     return True
 
 
+def heuristic_score(features):
+    """
+    Fallback rule-based threat detection when models unavailable.
+    Returns: (prediction_label, confidence)
+    """
+    # Extract features for heuristic analysis
+    flow_bytes_sec = features.get('Flow Bytes/s', 0.0)
+    total_fwd_packets = features.get(' Total Fwd Packets', 0.0)
+    total_bwd_packets = features.get(' Total Backward Packets', 0.0)
+    flow_duration = features.get(' Flow Duration', 0.0)
+    total_fwd_len = features.get('Total Length of Fwd Packets', 0.0)
+    total_bwd_len = features.get(' Total Length of Bwd Packets', 0.0)
+    dst_port = features.get(' Destination Port', 0.0)
+    
+    # Simple anomaly scoring
+    threat_score = 0.0
+    threat_reasons = []
+    
+    # High data rate (DDoS/DoS indicator)
+    if flow_bytes_sec > 100000:
+        threat_score += 0.3
+        threat_reasons.append("High data rate")
+    
+    # High packet count (potential attack)
+    total_packets = total_fwd_packets + total_bwd_packets
+    if total_packets > 1000:
+        threat_score += 0.25
+        threat_reasons.append("High packet count")
+    
+    # Imbalanced packet flow (port scan or specific attacks)
+    if total_packets > 0:
+        packet_ratio = total_fwd_packets / total_packets if total_packets > 0 else 0
+        if packet_ratio > 0.9 or packet_ratio < 0.1:
+            threat_score += 0.2
+            threat_reasons.append("Imbalanced packet flow")
+    
+    # Very short duration with data (scan-like behavior)
+    if flow_duration < 1000 and total_packets > 10:
+        threat_score += 0.15
+        threat_reasons.append("Short duration with activity")
+    
+    # Port-based indicators
+    if dst_port in [22, 21, 23]:  # SSH, FTP, Telnet
+        threat_score += 0.1
+        threat_reasons.append("Sensitive port access")
+    
+    # Determine label and confidence
+    if threat_score >= 0.6:
+        # More likely to be a threat
+        label = 'DoS_DDoS'  # Default threat type
+        confidence = min(threat_score, 1.0)
+    elif threat_score >= 0.3:
+        label = 'PortScan'  # Suspicious activity
+        confidence = threat_score
+    else:
+        label = 'Benign'
+        confidence = 1.0 - threat_score
+    
+    return label, confidence
+
+
 def predict_with_model(model_name, features):
     """
     Make prediction using a specific model
