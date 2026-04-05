@@ -22,6 +22,7 @@ import pandas as pd
 import joblib
 import json
 import os
+import h5py
 from datetime import datetime
 from threading import RLock
 
@@ -41,6 +42,51 @@ def first_existing_path(*candidate_paths):
         if candidate_path and os.path.exists(candidate_path):
             return candidate_path
     return None
+
+
+def _sanitize_keras_config(obj):
+    """Recursively remove legacy/newer-only Keras keys that break deserialization."""
+    if isinstance(obj, dict):
+        cleaned = {}
+        for key, value in obj.items():
+            if key in {"quantization_config", "optional"}:
+                continue
+            cleaned[key] = _sanitize_keras_config(value)
+        return cleaned
+    if isinstance(obj, list):
+        return [_sanitize_keras_config(item) for item in obj]
+    return obj
+
+
+def load_keras_model_compat(model_path):
+    """Load Keras model, falling back to config sanitization for legacy H5 artifacts."""
+    import tensorflow as tf
+
+    try:
+        return tf.keras.models.load_model(model_path, compile=False)
+    except Exception as primary_exc:
+        if not model_path.endswith(".h5"):
+            raise primary_exc
+
+        try:
+            with h5py.File(model_path, "r") as h5_file:
+                raw_config = h5_file.attrs.get("model_config")
+                if raw_config is None:
+                    raise ValueError("No model_config attribute in H5 file")
+
+                if isinstance(raw_config, bytes):
+                    raw_config = raw_config.decode("utf-8")
+
+                model_config = json.loads(raw_config)
+                model_config = _sanitize_keras_config(model_config)
+
+            model = tf.keras.models.model_from_json(json.dumps(model_config))
+            model.load_weights(model_path)
+            return model
+        except Exception as compat_exc:
+            raise RuntimeError(
+                f"Standard load failed: {primary_exc}; compat load failed: {compat_exc}"
+            ) from compat_exc
 
 
 # Model paths for CICIDS2017 models
@@ -170,11 +216,10 @@ def load_models():
             elif os.path.isdir(model_path):
                 # Load SavedModel format (TensorFlow directory)
                 import tensorflow as tf
-                MODELS[model_name] = tf.keras.models.load_model(model_path)
+                MODELS[model_name] = tf.keras.models.load_model(model_path, compile=False)
             else:
-                # Load .h5 file (Keras format)
-                import tensorflow as tf
-                MODELS[model_name] = tf.keras.models.load_model(model_path)
+                # Load .keras/.h5 with compatibility fallback for legacy artifacts
+                MODELS[model_name] = load_keras_model_compat(model_path)
 
             print(f"[OK] {model_name} loaded: {model_path}")
             reset_model_metrics(model_name)

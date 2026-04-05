@@ -11,6 +11,8 @@ Usage:
 """
 import os
 import sys
+import json
+import h5py
 import tensorflow as tf
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,6 +39,41 @@ def detect_keras_version():
         return "unknown"
 
 
+def _sanitize_keras_config(obj):
+    """Recursively remove keys that are unsupported across Keras versions."""
+    if isinstance(obj, dict):
+        cleaned = {}
+        for key, value in obj.items():
+            if key in {"quantization_config", "optional"}:
+                continue
+            cleaned[key] = _sanitize_keras_config(value)
+        return cleaned
+    if isinstance(obj, list):
+        return [_sanitize_keras_config(item) for item in obj]
+    return obj
+
+
+def load_keras_model_compat(model_path):
+    """Load model with a fallback path for incompatible legacy H5 metadata."""
+    try:
+        return tf.keras.models.load_model(model_path, compile=False)
+    except Exception as primary_exc:
+        if not model_path.endswith(".h5"):
+            raise primary_exc
+
+        with h5py.File(model_path, "r") as h5_file:
+            raw_config = h5_file.attrs.get("model_config")
+            if raw_config is None:
+                raise RuntimeError(f"No model_config found in {model_path}") from primary_exc
+            if isinstance(raw_config, bytes):
+                raw_config = raw_config.decode("utf-8")
+            model_config = _sanitize_keras_config(json.loads(raw_config))
+
+        model = tf.keras.models.model_from_json(json.dumps(model_config))
+        model.load_weights(model_path)
+        return model
+
+
 def convert_model(model_name, h5_path, output_file):
     """Convert a single .h5 model to .keras format."""
     print(f"\n{'='*60}")
@@ -50,12 +87,8 @@ def convert_model(model_name, h5_path, output_file):
     try:
         print(f"[INFO] Loading .h5 model from: {h5_path}")
         
-        # Load in legacy-compatible runtime; skip compile artifacts.
-        model = tf.keras.models.load_model(
-            h5_path,
-            custom_objects=None,
-            compile=False,
-        )
+        # Load in legacy-compatible runtime with config sanitization fallback.
+        model = load_keras_model_compat(h5_path)
         
         print(f"[OK] Model loaded successfully")
         print(f"[INFO] Model structure:")
