@@ -1,0 +1,39 @@
+thresholds:
+  alert: 0.55
+  auto_response: 0.80
+
+escalation:
+  security_analysts: true
+  siem: true
+  incident_response_team: true
+
+playbooks:
+  default: terminate_connection.yaml
+  mappings:
+    DDoS: block_ip.yaml
+    DoS Hulk: block_ip.yaml
+    DoS GoldenEye: block_ip.yaml
+    DoS Slowhttptest: block_ip.yaml
+    DoS slowloris: block_ip.yaml
+    PortScan: terminate_connection.yaml
+    Bot: isolate_host.yaml
+    Infiltration: isolate_host.yaml
+    FTP-Patator: block_ip.yaml
+    SSH-Patator: block_ip.yaml
+    Heartbleed: terminate_connection.yaml
+    Web Attack - Brute Force: block_ip.yaml
+    Web Attack - Sql Injection: terminate_connection.yaml
+    Web Attack - XSS: terminate_connection.yaml
+
+alerts:
+  analyst_log: data/forensics/alerts_security_analysts.jsonl
+  siem_log: data/forensics/alerts_siem.jsonl
+  irt_log: data/forensics/alerts_incident_response_team.jsonl
+  analyst_webhook: ""
+  siem_webhook: ""
+  irt_webhook: ""
+
+forensics:
+  attack_metadata: data/forensics/attack_metadata.jsonl
+  system_events: data/forensics/system_events.jsonl
+  response_actions: data/forensics/response_actions.jsonl

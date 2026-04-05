@@ -1,0 +1,6 @@
+name: isolate_host_response
+steps:
+  - action: isolate_infected_machine
+  - action: disable_network_interface
+    interface_name: eth0
+  - action: kill_malicious_process

@@ -1,0 +1,33 @@
+{
+  "title": "NIDS Overview",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Alerts (last 5m)",
+      "targets": [
+        {
+          "expr": "sum(rate(nids_alerts_total[5m]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Actions (last 5m)",
+      "targets": [
+        {
+          "expr": "sum(rate(nids_actions_total[5m]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Inference Latency (ms)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(nids_inference_latency_ms_bucket[5m])) by (le))"
+        }
+      ]
+    }
+  ]
+}

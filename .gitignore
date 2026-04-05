@@ -1,0 +1,77 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments and local env files
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.env
+.env.*
+!.env.example
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs and runtime outputs
+*.log
+logs/
+
+# Build/test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Large and generated data (keep folder structure placeholders with .gitkeep if needed)
+data/raw/
+data/processed/
+data/uploads/
+data/features/
+data/forensics/*.jsonl
+data/forensics/*.log
+
+# Local metrics/runtime state
+metrics_data.json
+
+# Datasets are too large for git
+datasets/
+
+# Trained model binaries and experiment outputs
+models/*.h5
+models/*.joblib
+models/*.pkl
+models/results/
+models/cicids_full/
+models/unsw_nb15/
+
+# Docker/runtime caches
+*.pid
+*.seed
+*.swp
+
+# Node dependencies and frontend build outputs
+node_modules/
+**/node_modules/
+dist/
+build/
+
+# Keep source, configs, docs, and scripts tracked
+!configs/
+!dashboard/
+!dashboards/
+!detection_engine/
+!preprocessing/
+!reponse_engine/
+!scripts/
+!services/
+!virtualization/
+!models/README.md

@@ -1,0 +1,15 @@
+thresholds:
+  alert: 0.65
+  auto: 0.85
+
+class_overrides:
+  dos_ddos:
+    auto: 0.90
+  port_scan:
+    auto: 0.80
+  brute_force:
+    auto: 0.85
+  malware_c2:
+    auto: 0.90
+  data_exfil:
+    auto: 0.92

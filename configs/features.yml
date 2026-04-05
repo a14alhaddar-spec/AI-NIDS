@@ -1,0 +1,13 @@
+windows:
+  - 1
+  - 5
+  - 60
+
+features:
+  - flow_duration
+  - bytes
+  - packets
+  - bytes_per_sec
+  - packets_per_sec
+  - src_dst_bytes_ratio
+  - avg_pkt_size

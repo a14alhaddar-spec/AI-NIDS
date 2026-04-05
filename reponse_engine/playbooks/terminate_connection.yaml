@@ -1,0 +1,7 @@
+name: terminate_connection_response
+steps:
+  - action: drop_malicious_connection
+  - action: restrict_protocol
+    policy: deny
+  - action: block_suspicious_port
+    protocol: tcp

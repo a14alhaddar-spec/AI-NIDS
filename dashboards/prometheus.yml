@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "ingestion"
+    static_configs:
+      - targets: ["ingestion:5000"]
+  - job_name: "feature_pipeline"
+    static_configs:
+      - targets: ["feature_pipeline:5000"]
+  - job_name: "inference"
+    static_configs:
+      - targets: ["inference:5000"]
+  - job_name: "soar"
+    static_configs:
+      - targets: ["soar:5000"]
+  - job_name: "dashboard_api"
+    static_configs:
+      - targets: ["dashboard_api:5000"]

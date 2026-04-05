@@ -1,0 +1,6 @@
+flask
+redis
+prometheus_client
+pyyaml
+joblib
+numpy

@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpcap0.8 tcpdump \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    flask \
+    requests \
+    scapy \
+    numpy \
+    pandas \
+    joblib \
+    scikit-learn \
+    tensorflow-cpu==2.15.0
+
+COPY . /app
+
+EXPOSE 8080
+
+CMD ["python", "dashboards/dashboard_unified.py"]

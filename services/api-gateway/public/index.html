@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI NIDS Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Urbanist:wght@400;600;700&display=swap"
+    />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div class="hero-title">
+          <p class="eyebrow">Monitoring & Visualisation</p>
+          <h1>AI NIDS + SOAR Command Center</h1>
+          <p class="subtitle">Real-time detection intelligence, automated response, and system health.</p>
+        </div>
+        <div class="hero-status">
+          <div class="status">
+            <span class="dot" id="status-dot"></span>
+            <span id="status">Loading...</span>
+          </div>
+          <div class="timestamp" id="updated"></div>
+        </div>
+      </header>
+
+      <section class="kpi-grid">
+        <div class="kpi">
+          <p>Active threats</p>
+          <h2 id="active-threats">0</h2>
+          <span id="alert-window">Last 5 min</span>
+        </div>
+        <div class="kpi">
+          <p>Detection confidence</p>
+          <h2 id="confidence-avg">0.00</h2>
+          <span id="confidence-range">min 0.00 | max 0.00</span>
+        </div>
+        <div class="kpi">
+          <p>Detection latency (p95)</p>
+          <h2 id="det-latency">0 ms</h2>
+          <span id="det-latency-avg">avg 0 ms</span>
+        </div>
+        <div class="kpi">
+          <p>Response latency (p95)</p>
+          <h2 id="resp-latency">0 ms</h2>
+          <span id="resp-latency-avg">avg 0 ms</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Active threats</h2>
+            <span class="pill" id="active-threats-pill">0 threats</span>
+          </div>
+          <ul id="alerts"></ul>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2>Attack categories</h2>
+            <span class="pill">Top signals</span>
+          </div>
+          <div id="categories" class="bar-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2>Automated responses</h2>
+            <span class="pill" id="auto-rate">0% auto</span>
+          </div>
+          <div id="actions" class="bar-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2>Model performance</h2>
+            <span class="pill">Last batch</span>
+          </div>
+          <ul class="metrics" id="model-metrics"></ul>
+        </div>
+      </section>
+
+      <section class="integrations">
+        <div class="card">
+          <h2>Grafana metrics</h2>
+          <p>Explore Prometheus-backed performance panels.</p>
+          <a class="link-button" href="http://localhost:3000" target="_blank" rel="noreferrer">
+            Open Grafana
+          </a>
+        </div>
+        <div class="card">
+          <h2>Kibana logs</h2>
+          <p>Investigate raw alerts, audit trails, and response logs.</p>
+          <a class="link-button" href="http://localhost:5601" target="_blank" rel="noreferrer">
+            Open Kibana
+          </a>
+        </div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

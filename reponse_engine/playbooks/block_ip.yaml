@@ -1,0 +1,8 @@
+name: block_ip_response
+steps:
+  - action: block_malicious_ip
+    direction: ingress
+  - action: modify_firewall_rules
+    rule: block hostile source and related traffic
+  - action: block_suspicious_port
+    protocol: tcp
