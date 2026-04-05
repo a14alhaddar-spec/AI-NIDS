@@ -44,17 +44,24 @@ def first_existing_path(*candidate_paths):
 
 
 # Model paths for CICIDS2017 models
+# Check for SavedModel format (directory) first, then .h5 files
 MODEL_PATHS = {
     'CNN-LSTM': first_existing_path(
-        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model"),  # SavedModel directory
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_lstm_model.h5"),  # .h5 file
+        os.path.join(BASE_DIR, "models", "cnn_lstm_model"),
         os.path.join(BASE_DIR, "models", "cnn_lstm_model.h5"),
     ),
     'CNN': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model"),
         os.path.join(BASE_DIR, "models", "cicids_full", "cnn_model.h5"),
+        os.path.join(BASE_DIR, "models", "cnn_model"),
         os.path.join(BASE_DIR, "models", "cnn_model.h5"),
     ),
     'LSTM': first_existing_path(
+        os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model"),
         os.path.join(BASE_DIR, "models", "cicids_full", "lstm_model.h5"),
+        os.path.join(BASE_DIR, "models", "lstm_model"),
         os.path.join(BASE_DIR, "models", "lstm_model.h5"),
     ),
     'Random Forest': first_existing_path(
@@ -152,8 +159,14 @@ def load_models():
                 raise FileNotFoundError(f"No artifact found for {model_name}")
 
             if model_path.endswith('.joblib'):
+                # Load scikit-learn model
                 MODELS[model_name] = joblib.load(model_path)
+            elif os.path.isdir(model_path):
+                # Load SavedModel format (TensorFlow directory)
+                import tensorflow as tf
+                MODELS[model_name] = tf.keras.models.load_model(model_path)
             else:
+                # Load .h5 file (Keras format)
                 import tensorflow as tf
                 MODELS[model_name] = tf.keras.models.load_model(model_path)
 
