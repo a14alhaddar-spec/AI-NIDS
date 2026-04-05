@@ -107,7 +107,7 @@ def main():
     
     launched_processes = []
     for name, script in services:
-        launched_processes.append(start_service(name, script, python_exe, wait_time=3))
+        launched_processes.append((name, start_service(name, script, python_exe, wait_time=3)))
     
     print()
     print("=" * 70)
@@ -131,11 +131,21 @@ def main():
     
     try:
         while True:
-            if os.name != "nt":
-                failed = [proc for proc in launched_processes if proc.poll() is not None]
-                if failed:
-                    print("\nOne or more services exited unexpectedly. Stopping launcher.")
-                    return 1
+            dashboard_failed = False
+            for name, proc in launched_processes:
+                return_code = proc.poll()
+                if return_code is None:
+                    continue
+
+                if name == "Unified Dashboard (Port 8080)":
+                    print(f"\n[ERROR] {name} exited with code {return_code}. Stopping launcher.")
+                    dashboard_failed = True
+                    break
+
+                print(f"\n[WARN] {name} exited with code {return_code}. Keeping dashboard online.")
+
+            if dashboard_failed:
+                return 1
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n\nShutting down...")
